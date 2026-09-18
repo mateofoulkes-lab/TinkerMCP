@@ -161,12 +161,6 @@ function isHeadless() {
   return process.env.TINKERMCP_HEADLESS === "true" || !!process.env.RENDER;
 }
 
-async function activatePage(p: Page) {
-  page = p;
-  diagnosticsAttached = false;
-  await attachDiagnostics(p);
-}
-
 export async function getTinkercadPage(): Promise<Page> {
   if (!context) {
     const userDataDir = path.resolve(
@@ -184,14 +178,10 @@ export async function getTinkercadPage(): Promise<Page> {
         "--use-gl=swiftshader",
       ],
     });
-
-    context.on("page", (newPage) => {
-      void activatePage(newPage);
-    });
   }
   if (!page || page.isClosed()) {
-    const pages = context.pages();
-    await activatePage(pages[pages.length - 1] ?? (await context.newPage()));
+    page = context.pages()[0] ?? (await context.newPage());
+    diagnosticsAttached = false;
   }
   await attachDiagnostics(page);
   return page;
@@ -226,7 +216,7 @@ export async function remoteScreenshot(): Promise<Buffer> {
 
 export async function remoteStatus(): Promise<unknown> {
   const p = await getTinkercadPage();
-  return { url: p.url(), title: await p.title(), pages: context?.pages().length ?? 1 };
+  return { url: p.url(), title: await p.title() };
 }
 
 export async function remoteNavigate(url: string): Promise<unknown> {
@@ -237,19 +227,8 @@ export async function remoteNavigate(url: string): Promise<unknown> {
 
 export async function remoteClick(x: number, y: number): Promise<unknown> {
   const p = await getTinkercadPage();
-  const pagesBefore = context?.pages().length ?? 1;
   await p.mouse.click(x, y);
-  await p.waitForTimeout(900);
-
-  const pages = context?.pages() ?? [p];
-  if (pages.length > pagesBefore) {
-    await activatePage(pages[pages.length - 1]);
-    await page!.waitForLoadState("domcontentloaded", { timeout: 10000 }).catch(() => undefined);
-  } else {
-    const newest = pages[pages.length - 1];
-    if (newest && newest !== page) await activatePage(newest);
-  }
-
+  await p.waitForTimeout(300);
   return remoteStatus();
 }
 
