@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import {
+  browserCheck,
   diagnosticClear,
   diagnosticSnapshot,
   diagnosticStart,
@@ -15,7 +16,7 @@ import {
 function createMcpServer() {
   const server = new McpServer({
     name: "TinkerMCP",
-    version: "0.3.0",
+    version: "0.4.0",
   });
 
   server.tool(
@@ -24,6 +25,15 @@ function createMcpServer() {
     { url: z.string().url().optional() },
     async ({ url }) => ({
       content: [{ type: "text", text: await openTinkercad(url) }],
+    }),
+  );
+
+  server.tool(
+    "tinkercad_browser_check",
+    "Smoke-test the hosted browser and WebGL support by opening the Tinkercad home page.",
+    {},
+    async () => ({
+      content: [{ type: "text", text: JSON.stringify(await browserCheck(), null, 2) }],
     }),
   );
 
@@ -70,11 +80,23 @@ const app = express();
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/", (_req, res) => {
-  res.type("text/plain").send("TinkerMCP is running. MCP endpoint: /mcp\n");
+  res.type("text/plain").send("TinkerMCP is running. MCP endpoint: /mcp\nBrowser smoke test: /browser-check\n");
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "TinkerMCP", version: "0.3.0" });
+  res.json({ ok: true, service: "TinkerMCP", version: "0.4.0" });
+});
+
+app.get("/browser-check", async (_req, res) => {
+  try {
+    res.json(await browserCheck());
+  } catch (error) {
+    console.error("Browser check failed", error);
+    res.status(500).json({
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 });
 
 app.all("/mcp", async (req, res) => {
