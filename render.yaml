@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: tinkermcp
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
