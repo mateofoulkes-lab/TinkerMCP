@@ -115,7 +115,7 @@ async function attachDiagnostics(p: Page) {
       }
       if (event instanceof InputEvent) {
         const el = event.target as HTMLInputElement | null;
-        base.value = el?.value?.slice?.(0, 300);
+        base.value = el?.type === "password" ? "<redacted>" : el?.value?.slice?.(0, 300);
         base.inputType = event.inputType;
       }
 
@@ -207,6 +207,42 @@ export async function browserCheck(): Promise<unknown> {
     })(),
     elapsedMs: elapsed,
   }), Date.now() - started);
+}
+
+export async function remoteScreenshot(): Promise<Buffer> {
+  const p = await getTinkercadPage();
+  return await p.screenshot({ type: "jpeg", quality: 72 });
+}
+
+export async function remoteStatus(): Promise<unknown> {
+  const p = await getTinkercadPage();
+  return { url: p.url(), title: await p.title() };
+}
+
+export async function remoteNavigate(url: string): Promise<unknown> {
+  const p = await getTinkercadPage();
+  await p.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+  return remoteStatus();
+}
+
+export async function remoteClick(x: number, y: number): Promise<unknown> {
+  const p = await getTinkercadPage();
+  await p.mouse.click(x, y);
+  await p.waitForTimeout(300);
+  return remoteStatus();
+}
+
+export async function remoteType(text: string): Promise<unknown> {
+  const p = await getTinkercadPage();
+  await p.keyboard.type(text, { delay: 15 });
+  return remoteStatus();
+}
+
+export async function remoteKey(key: string): Promise<unknown> {
+  const p = await getTinkercadPage();
+  await p.keyboard.press(key);
+  await p.waitForTimeout(200);
+  return remoteStatus();
 }
 
 export async function openTinkercad(url = "https://www.tinkercad.com/3d-design"): Promise<string> {
