@@ -1,5 +1,6 @@
 import { chromium, type BrowserContext, type Page, type Request, type Response } from "playwright";
 import path from "node:path";
+import os from "node:os";
 
 let context: BrowserContext | undefined;
 let page: Page | undefined;
@@ -156,13 +157,26 @@ async function attachDiagnostics(p: Page) {
   });
 }
 
+function isHeadless() {
+  return process.env.TINKERMCP_HEADLESS === "true" || !!process.env.RENDER;
+}
+
 export async function getTinkercadPage(): Promise<Page> {
   if (!context) {
-    const userDataDir = path.resolve(process.env.TINKERMCP_PROFILE ?? ".tinkermcp-profile");
+    const userDataDir = path.resolve(
+      process.env.TINKERMCP_PROFILE ?? path.join(os.tmpdir(), "tinkermcp-profile"),
+    );
+
     context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      channel: process.env.TINKERMCP_CHROME_CHANNEL || undefined,
-      viewport: null,
+      headless: isHeadless(),
+      viewport: { width: 1440, height: 1000 },
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--enable-webgl",
+        "--use-gl=swiftshader",
+      ],
     });
   }
   if (!page || page.isClosed()) {
@@ -171,6 +185,28 @@ export async function getTinkercadPage(): Promise<Page> {
   }
   await attachDiagnostics(page);
   return page;
+}
+
+export async function browserCheck(): Promise<unknown> {
+  const started = Date.now();
+  const p = await getTinkercadPage();
+  await p.goto("https://www.tinkercad.com/", { waitUntil: "domcontentloaded", timeout: 45000 });
+  return p.evaluate((elapsed) => ({
+    ok: true,
+    url: location.href,
+    title: document.title,
+    userAgent: navigator.userAgent,
+    webdriver: navigator.webdriver,
+    webgl: (() => {
+      try {
+        const canvas = document.createElement("canvas");
+        return !!(canvas.getContext("webgl") || canvas.getContext("webgl2"));
+      } catch {
+        return false;
+      }
+    })(),
+    elapsedMs: elapsed,
+  }), Date.now() - started);
 }
 
 export async function openTinkercad(url = "https://www.tinkercad.com/3d-design"): Promise<string> {
