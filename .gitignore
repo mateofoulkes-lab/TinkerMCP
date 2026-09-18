@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.tinkermcp-profile/
+*.log
+.DS_Store
