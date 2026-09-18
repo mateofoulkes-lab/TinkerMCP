@@ -137,9 +137,10 @@ export async function getTinkercadPage(): Promise<Page> {
     });
   }
 
-  if (!page || page.isClosed()) {
-    const usable = context.pages().find((p) => !p.isClosed());
-    page = usable ?? (await context.newPage());
+  const usable = context.pages().filter((p) => !p.isClosed());
+  const newest = usable[usable.length - 1];
+  if (!page || page.isClosed() || (newest && newest !== page)) {
+    page = newest ?? (await context.newPage());
     diagnosticsAttached = false;
   }
 
@@ -193,7 +194,7 @@ export async function remoteScreenshot(): Promise<Buffer> {
 
 export async function remoteStatus(): Promise<unknown> {
   const p = await getTinkercadPage();
-  return { url: p.url(), title: await p.title() };
+  return { url: p.url(), title: await p.title(), pages: context?.pages().filter((candidate) => !candidate.isClosed()).length ?? 1 };
 }
 
 export async function remoteNavigate(url: string): Promise<unknown> {
@@ -205,7 +206,7 @@ export async function remoteNavigate(url: string): Promise<unknown> {
 export async function remoteClick(x: number, y: number): Promise<unknown> {
   const p = await getTinkercadPage();
   await p.mouse.click(x, y);
-  await p.waitForTimeout(300);
+  await p.waitForTimeout(900);
   return remoteStatus();
 }
 
@@ -218,7 +219,7 @@ export async function remoteType(text: string): Promise<unknown> {
 export async function remoteKey(key: string): Promise<unknown> {
   const p = await getTinkercadPage();
   await p.keyboard.press(key);
-  await p.waitForTimeout(200);
+  await p.waitForTimeout(700);
   return remoteStatus();
 }
 
