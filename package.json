@@ -1,12 +1,12 @@
 {
   "name": "tinkermcp",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Experimental MCP server for AI control of Tinkercad 3D Design via browser automation.",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "postinstall": "npx playwright install --only-shell chromium",
-    "build": "tsc",
+    "build": "npx playwright install --only-shell chromium && tsc",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts"
   },
